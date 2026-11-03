@@ -7,6 +7,7 @@ Vous devez completer les routes ci-dessous en vous appuyant sur :
 """
 
 from contextlib import asynccontextmanager
+from unittest import result
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -43,7 +44,9 @@ async def lifespan(app: FastAPI):
     global scoring_predictor, sentiment_analyzer
     logger.info("Demarrage des services FastAPI IA-TOS...")
     
-    # TODO: Initialisez vos modeles ici
+    scoring_predictor = CreditScoringPredictor()
+    sentiment_analyzer = SentimentAnalyzer()
+    logger.info("Services FastAPI IA-TOS demarrés avec succes.")
     
     yield
     logger.info("Arret des services FastAPI IA-TOS.")
@@ -78,9 +81,10 @@ def health_check():
     - service="iatos-api"
     """
     # TODO: Remplacer par votre implementation
-    raise HTTPException(
-        status_code=501, 
-        detail="Endpoint /health non implemente. A vous de jouer !"
+    return HealthResponse(
+        status="ok", 
+        version=__version__, 
+        service="iatos-api"
     )
 
 
@@ -99,10 +103,29 @@ def chat_endpoint(payload: ChatRequest):
     4. Gerer les exceptions potentielles avec un logger.error et un HTTPException(500).
     """
     # TODO: Remplacer par votre implementation
-    raise HTTPException(
-        status_code=501, 
-        detail="Endpoint /chat non implemente. A vous de jouer !"
-    )
+
+    history_dicts = [
+    {"role": message.role, "content": message.content}
+    for message in payload.history
+]   
+    try:
+        result = run_agent_message(
+            user_message=payload.message,
+            history=history_dicts,
+        )
+    
+        return ChatResponse(
+            success=result["success"],
+            response=result["response"],
+            tool_called=result["tool_called"],
+            tool_results=result["tool_results"],
+        )
+    except Exception as exc:
+        logger.error("Erreur inattendue dans l'endpoint /chat")
+        raise HTTPException(
+            status_code=500,
+            detail="Une erreur interne est survenue.",
+        ) from exc
 
 
 @app.post("/predict/credit", response_model=CreditPredictResponse, tags=["Scoring Tabulaire"])
@@ -116,10 +139,30 @@ def predict_credit(payload: CreditPredictRequest):
     4. Gerer les exceptions potentielles avec un HTTPException(500).
     """
     # TODO: Remplacer par votre implementation
-    raise HTTPException(
-        status_code=501, 
-        detail="Endpoint /predict/credit non implemente. A vous de jouer !"
-    )
+    try:
+        global scoring_predictor
+        if scoring_predictor is None:
+            scoring_predictor = CreditScoringPredictor()
+        
+        prediction_result = scoring_predictor.predict(
+            montant_demande=payload.montant_demande,
+            duree_mois=payload.duree_mois,
+            revenu_mensuel=payload.revenu_mensuel
+        )
+        
+        return CreditPredictResponse(
+            score=prediction_result["score"],
+            decision=prediction_result["decision"],
+            motif=prediction_result["motif"],
+            features_utilisees=prediction_result["features_utilisees"],
+            type_modele=prediction_result["type_modele"]
+        )
+    except Exception as exc:
+            logger.error("Erreur inattendue dans l'endpoint /predict/credit")
+            raise HTTPException(
+                status_code=500,
+                detail="Une erreur interne est survenue.",
+            ) from exc
 
 
 @app.post("/predict/sentiment", response_model=SentimentPredictResponse, tags=["Traitement NLP"])
@@ -133,7 +176,23 @@ def predict_sentiment(payload: SentimentPredictRequest):
     4. Gerer les exceptions potentielles avec un HTTPException(500).
     """
     # TODO: Remplacer par votre implementation
-    raise HTTPException(
-        status_code=501, 
-        detail="Endpoint /predict/sentiment non implemente. A vous de jouer !"
-    )
+    try:
+        global sentiment_analyzer
+        if sentiment_analyzer is None:
+            sentiment_analyzer = SentimentAnalyzer()
+        
+        analysis_result = sentiment_analyzer.analyze(payload.texte)
+        
+        return SentimentPredictResponse(
+            texte=payload.texte,
+            compound=analysis_result["compound"],
+            label=analysis_result["label"],
+            scores=analysis_result["scores"],
+            type_modele=analysis_result["type_modele"]
+        )
+    except Exception as exc:
+        logger.error("Erreur inattendue dans l'endpoint /predict/sentiment")
+        raise HTTPException(
+            status_code=500,
+            detail="Une erreur interne est survenue.",
+        ) from exc
