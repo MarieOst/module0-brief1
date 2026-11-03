@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Socle applicatif et package metier pour la plateforme IA-TOS"
 authors = [{ name = "Equipe Pedagogique ATLAS / Atos & Simplon" }]
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12, <3.13"
 dependencies = [
     "fastapi>=0.110.0",
     "uvicorn>=0.28.0",
