@@ -4,6 +4,7 @@ Starter Kit Apprenants - Brief 1 IA-TOS.
 """
 
 import os
+from urllib import response
 import requests
 import streamlit as st
 
@@ -67,5 +68,53 @@ et connecte au LLM local **Qwen 2.5** via **Ollama**. Il possede un outil determ
 #    d. Afficher la réponse dans le chat assistant et ajouter au session_state.
 #    e. Si tool_called est True, afficher un expander montrant les calculs effectués.
 # ==============================================================================
+st.session_state.setdefault("messages", [])
 
-st.info("A vous de jouer ! Implementez la logique de chat conversationnelle ci-dessous.")
+for message in st.session_state["messages"]:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
+
+user_prompt = st.chat_input("Posez-moi une question ou demandez un calcul...")
+
+if user_prompt:
+    history_payload = [
+            {"role": message["role"], "content": message["content"]}
+            for message in st.session_state["messages"]
+        ]
+     
+    st.session_state["messages"].append({
+            "role": "user",
+            "content": user_prompt,
+        })
+    
+    with st.chat_message("user"):
+        st.write(user_prompt)
+
+    payload = {
+        "message": user_prompt,
+        "history": history_payload
+    }
+
+    try:
+       resp = requests.post(f"{FASTAPI_URL}/chat", 
+                                 json=payload,
+                                 timeout=60)
+       resp.raise_for_status()
+       data = resp.json()
+
+       texte_assistant = data["response"]
+
+       with st.chat_message("assistant"):
+            st.write(texte_assistant)
+            if data["tool_called"]:
+                with st.expander("Voir les calculs effectués"):
+                    for result in data["tool_results"]:
+                        st.write(result)
+
+       st.session_state["messages"].append({
+            "role": "assistant",
+            "content": texte_assistant,
+        })
+
+    except requests.exceptions.RequestException:
+        st.error("Impossible de se connecter à l'API FastAPI.")
