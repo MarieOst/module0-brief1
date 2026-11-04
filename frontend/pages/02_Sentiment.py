@@ -45,4 +45,26 @@ de Transformers pre-entraines en francais (**CamemBERT / RoBERTa**) et du Fine-T
 #    c. Restituer le résultat avec des composants visuels adaptés (st.metric, st.progress, etc.).
 # ==============================================================================
 
-st.info("A vous de jouer ! Implementez l'analyseur de sentiment et l'affichage des metriques NLP.")
+texte_saisi = st.text_area("Entrez le texte à analyser", height=150)
+analyse_button = st.button("Analyser la polarité")
+
+if analyse_button:
+    if texte_saisi:
+        try:
+            payload = {"texte": texte_saisi}
+            resp = requests.post(f"{FASTAPI_URL}/predict/sentiment", json=payload, timeout=5)
+            if resp.status_code == 200:
+                result = resp.json()
+                label = result.get("label")
+                compound = result.get("compound")
+                type_modele = result.get("type_modele")
+
+                st.metric(label="Polarité", value=f"{compound:.2f}", delta=None)
+                st.badge(f"Label : {label}", color="green" if label == "Positif" else "orange" if label == "Neutre" else "red")
+                st.info(f"Méthode : {type_modele}")
+            else:
+                st.error(f"Erreur API : Statut {resp.status_code}")
+        except Exception as e:
+            st.error(f"Erreur lors de l'appel API")
+    else:
+        st.warning("Veuillez entrer un texte à analyser.")

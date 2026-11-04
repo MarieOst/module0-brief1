@@ -68,7 +68,12 @@ et connecte au LLM local **Qwen 2.5** via **Ollama**. Il possede un outil determ
 #    d. Afficher la réponse dans le chat assistant et ajouter au session_state.
 #    e. Si tool_called est True, afficher un expander montrant les calculs effectués.
 # ==============================================================================
-st.session_state.setdefault("messages", [])
+if "messages" not in st.session_state:
+    st.session_state["messages"] = [{
+            "role": "assistant",
+            "content": "Bonjour, je suis l'assistant conversationnel. Posez-moi une question ou demandez un calcul !",
+        }]
+
 
 for message in st.session_state["messages"]:
     with st.chat_message(message["role"]):
