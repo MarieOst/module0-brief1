@@ -2,6 +2,7 @@
 
 from iatos_core.ml.scoring import CreditScoringPredictor
 from iatos_core.ml.sentiment import SentimentAnalyzer
+from iatos_core.ml.classifier import TicketClassifier
 
 
 def test_credit_scoring_predictor():
@@ -44,3 +45,24 @@ def test_sentiment_analyzer():
     res_empty = analyzer.analyze("")
     assert res_empty["label"] == "Neutre"
     assert res_empty["compound"] == 0.0
+
+def test_classifier():
+    classifier = TicketClassifier()
+
+    # Cas 1 : banque
+    res_pos = classifier.classify("Ma carte bancaire est bloquee au distributeur.",  categories=['Banque / Paiement', 'Ressources Humaines', 'Informatique / VPN'])
+    assert res_pos["top_category"] == "Banque / Paiement"
+    assert res_pos["confidence"] > 0.5
+    assert len(res_pos["distribution"]) > 2
+
+    # Cas 2 : politics
+    res_pos = classifier.classify("Angela Merkel is a politician in Germany and leader of the CDU",  categories=["politics", "economy", "entertainment", "environment"])
+    assert res_pos["top_category"] == "politics"
+    assert res_pos["confidence"] > 0.5
+    assert len(res_pos["distribution"]) > 2
+
+    # Cas 3 : texte nul
+    res_pos = classifier.classify("",  categories=["politics", "economy", "entertainment", "environment"])
+    assert res_pos["top_category"] == "Non classifié"
+    assert res_pos["confidence"] == 0.0
+    assert res_pos["distribution"] == []

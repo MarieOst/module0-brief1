@@ -65,3 +65,25 @@ def test_endpoint_chat_with_mocked_agent(client):
         assert data["success"] is True
         assert data["tool_called"] is True
         assert "20" in data["response"]
+
+def test_endpoint_classify_success(client):
+    payload = {
+        "ticket_text": "Ma carte bancaire est bloquee au distributeur.",
+        "categories": ['Banque / Paiement', 'Ressources Humaines', 'Informatique / VPN']
+    }
+    response = client.post("/classify-ticket", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["top_category"] != "Non classifié"
+    assert data["confidence"] > 0.0
+
+def test_endpoint_classify_requires_two_categories(client):
+    # Test que l'endpoint /classify-ticket renvoie une erreur 422 si moins de deux categories sont fournies.
+    payload = {
+        "ticket_text": "Ma carte bancaire est bloquée.",
+        "categories": ["Banque / Paiement"],
+    }
+
+    response = client.post("/classify-ticket", json=payload)
+
+    assert response.status_code == 422

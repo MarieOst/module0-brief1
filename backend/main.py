@@ -15,7 +15,7 @@ from iatos_core import __version__
 from iatos_core.logger import logger
 from iatos_core.ml.scoring import CreditScoringPredictor
 from iatos_core.ml.sentiment import SentimentAnalyzer
-from iatos_core.ml.classifier import Classifier
+from iatos_core.ml.classifier import TicketClassifier
 from iatos_core.agent.graph import run_agent_message
 
 from backend.schemas import (
@@ -34,7 +34,7 @@ from backend.schemas import (
 # Services partages (Singletons en memoire)
 scoring_predictor: CreditScoringPredictor = None
 sentiment_analyzer: SentimentAnalyzer = None
-category_classifier: Classifier = None
+category_classifier: TicketClassifier = None
 
 
 @asynccontextmanager
@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
     
     scoring_predictor = CreditScoringPredictor()
     sentiment_analyzer = SentimentAnalyzer()
-    category_classifier = Classifier()
+    category_classifier = TicketClassifier()
     logger.info("Services FastAPI IA-TOS demarrés avec succes.")
     
     yield
@@ -203,14 +203,14 @@ def predict_sentiment(payload: SentimentPredictRequest):
             detail="Une erreur interne est survenue.",
         ) from exc
 
-@app.post("/categorize", response_model=TicketRouteResponse, tags=["Traitement Zero-Shot"])
-def categorize_ticket(payload: TicketRouteRequest):
+@app.post("/classify-ticket", response_model=TicketRouteResponse, tags=["Traitement Zero-Shot"])
+def classify_ticket(payload: TicketRouteRequest):
     """Endpoint de routage de tickets vers des catégories.
     """
     try:
         global category_classifier
         if category_classifier is None:
-            category_classifier = Classifier()
+            category_classifier = TicketClassifier()
         
         result = category_classifier.classify(payload.ticket_text, payload.categories)
         
