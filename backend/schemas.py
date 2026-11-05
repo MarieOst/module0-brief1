@@ -1,7 +1,7 @@
 """Schemas Pydantic pour l'API FastAPI."""
 
 from typing import Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # Schemas pour le Chatbot LangGraph
@@ -55,3 +55,17 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     service: str
+
+# Schema pour la classification zero-shot
+class TicketRouteRequest(BaseModel):
+    ticket_text: str = Field(..., min_length=10, description="Texte descriptif de l'incident ou de la demande")
+    categories: list[str] = Field(..., min_length=2, description="Liste dynamique des départements ou thèmes cibles")
+
+class CategoryScore(BaseModel):
+    category: str
+    score: float
+
+class TicketRouteResponse(BaseModel):
+    top_category: str
+    confidence: float
+    distribution: list[CategoryScore]

@@ -15,6 +15,7 @@ from iatos_core import __version__
 from iatos_core.logger import logger
 from iatos_core.ml.scoring import CreditScoringPredictor
 from iatos_core.ml.sentiment import SentimentAnalyzer
+from iatos_core.ml.classifier import Classifier
 from iatos_core.agent.graph import run_agent_message
 
 from backend.schemas import (
@@ -25,11 +26,15 @@ from backend.schemas import (
     HealthResponse,
     SentimentPredictRequest,
     SentimentPredictResponse,
+    TicketRouteRequest,
+    TicketRouteResponse,
+    CategoryScore,
 )
 
 # Services partages (Singletons en memoire)
 scoring_predictor: CreditScoringPredictor = None
 sentiment_analyzer: SentimentAnalyzer = None
+category_classifier: Classifier = None
 
 
 @asynccontextmanager
@@ -41,11 +46,12 @@ async def lifespan(app: FastAPI):
     2. Instancier le SentimentAnalyzer() et l'assigner a la variable globale sentiment_analyzer.
     3. Logger le succes de l'initialisation avec loguru.
     """
-    global scoring_predictor, sentiment_analyzer
+    global scoring_predictor, sentiment_analyzer, category_classifier
     logger.info("Demarrage des services FastAPI IA-TOS...")
     
     scoring_predictor = CreditScoringPredictor()
     sentiment_analyzer = SentimentAnalyzer()
+    category_classifier = Classifier()
     logger.info("Services FastAPI IA-TOS demarrés avec succes.")
     
     yield
@@ -192,6 +198,25 @@ def predict_sentiment(payload: SentimentPredictRequest):
         )
     except Exception as exc:
         logger.error("Erreur inattendue dans l'endpoint /predict/sentiment")
+        raise HTTPException(
+            status_code=500,
+            detail="Une erreur interne est survenue.",
+        ) from exc
+
+@app.post("/categorize", response_model=TicketRouteResponse, tags=["Traitement Zero-Shot"])
+def categorize_ticket(payload: TicketRouteRequest):
+    """Endpoint de routage de tickets vers des catégories.
+    """
+    try:
+        global category_classifier
+        if category_classifier is None:
+            category_classifier = Classifier()
+        
+        result = category_classifier.classify(payload.ticket_text, payload.categories)
+        
+        return TicketRouteResponse(**result)
+    except Exception as exc:
+        logger.error("Erreur inattendue dans l'endpoint /categorize")
         raise HTTPException(
             status_code=500,
             detail="Une erreur interne est survenue.",
